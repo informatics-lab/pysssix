@@ -142,12 +142,5 @@ if __name__ == '__main__':
         print('usage: %s <mountpoint>' % argv[0])
         exit(1)
 
-    #logging.basicConfig(level=logging.DEBUG)
-
-    # logging.getLogger("botocore").setLevel(logging.WARNING)
-    # logging.getLogger("fuse.log-mixin").setLevel(logging.WARNING)
-
-    
-
     logger.info("Starting up s3 fuse at mount point %s", argv[1])
     fuse = FUSE(S3FileSystemMount(),argv[1], foreground=True)

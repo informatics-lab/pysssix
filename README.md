@@ -6,7 +6,7 @@
 
  - run:
  ```
- docker run -i -t  -v ~/.aws:/root/.aws -v $(pwd)/app:/root/app s3fuse
+ docker run -i -t --privileged -v ~/.aws:/root/.aws -v $(pwd)/app:/root/app s3fuse
  ```
 
 # Using
