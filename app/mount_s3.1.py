@@ -4,9 +4,13 @@ import sys
 import logging
 from functools  import lru_cache
 from sys import argv, exit
-from fuse import FUSE, Operations, LoggingMixIn
+from fuse import FUSE, Operations, LoggingMixIn, FuseOSError
 import boto3
+import os.path
+from errno import ENOENT
+from botocore.exceptions import ClientError
 
+# Logging 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
 ch = logging.StreamHandler()
@@ -14,27 +18,23 @@ ch.setLevel(logging.DEBUG)
 ch.setFormatter(logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s"))
 logger.addHandler(ch)
 
-# logger.basicConfig(stream=sys.stdout, level=logging.DEBUG)
-
-s3 = boto3.resource('s3')
-
-
 """
 With thanks to @perrygeo(https://gist.github.com/perrygeo)
 For the s3 file-like wrapper code. Now torn apart but inspired from:
 https://gist.github.com/perrygeo/9239b9ab64731cacbb35#file-s3reader-py
 """
 
+s3 = boto3.resource('s3')
+
 def open(path):
     return S3Reader(path)
 
 @lru_cache(maxsize=32)
-def get_s3_obj(orig_path):
-    logger.info("Creating S3 object for %s", orig_path)
-    path = 's3:/' + orig_path;
+def get_s3_obj(path):
+    logger.info("Creating S3 object for %s", path)
     bucket, key = parse_path(path)
     obj = s3.Object(bucket, key)
-    obj.orig_path = orig_path
+    obj.path = path
     return obj
 
 def range_string(start, stop):
@@ -42,14 +42,11 @@ def range_string(start, stop):
 
 # TODO: worth caching? @lru_cache(maxsize=128)
 def parse_path(path):
-    if not path.startswith("s3://"):
-        raise ValueError("s3reader.open requires an s3:// URI")
-    path = path.replace("s3://", "")
+    path = path[1:] if path[0] == '/' else path 
     parts = path.split("/")
     bucket = parts[0]
     key = "/".join(parts[1:])
     return bucket, key
-
 
 def size_limited_caching_byte_request(path, start, stop):
     method = get_bytes if (stop - start < 17000) else  get_bytes.__wrapped__ # the limit should be just over a metadata/chunk request limit?
@@ -61,6 +58,36 @@ def get_bytes(path, start, stop):
     logger.info("Request %s between %s", path, rng)
     return get_s3_obj(path).get(Range=rng)['Body'].read()
 
+
+@lru_cache(maxsize=128)
+def obj_type(path):
+    """
+    0 not found
+    1 dir
+    2 file
+    """
+
+    # Test if any object in bucket has prefix
+    try:    
+        bucket, key = parse_path(path)
+        if not len(key) > 0:
+            return 1
+        boto3.client('s3').list_objects_v2(Bucket=bucket,Prefix=key,MaxKeys=1)['Contents']
+    except KeyError:
+        raise FuseOSError(ENOENT)
+
+    # Test if path represents a complete bucket, key pair.
+    try:
+        if get_s3_obj(path).content_length <= 0:
+            raise ValueError("Content empty")
+        return 2 # Object exists. It's a file.
+    except ValueError as e:
+        raise FuseOSError(ENOENT)
+    except ClientError as e:
+        if e.response['Error']['Code'] == "404":
+            return 1 # The key doesn't exist so treat as a directory
+        else:
+            raise # Something else has gone wrong.
 
 
 class S3Reader(object):
@@ -87,10 +114,6 @@ class S3Reader(object):
         self.pos = whence + offset
 
 
-
-
-
-
 class S3FileSystemMount(Operations):        
 
     def __init__(self):
@@ -101,6 +124,7 @@ class S3FileSystemMount(Operations):
         return None
 
     def getattr(self, path, fh=None):
+        logger.info("you asked for %s", path)
         """
         st_dev − ID of device containing file
         st_mode − protection
@@ -116,11 +140,9 @@ class S3FileSystemMount(Operations):
         dir =  {'st_atime': 1511429888.0, 'st_ctime': 1511429894.0, 'st_gid': 0, 'st_mode': 16877, 'st_mtime': 1511429894.0, 'st_nlink': 3, 'st_size': 96, 'st_uid': 0}
         file = {'st_atime': 1511369446.0, 'st_ctime': 1511369374.0, 'st_gid': 0, 'st_mode': 33188, 'st_mtime': 1511367154.0, 'st_nlink': 1, 'st_size': 36047559, 'st_uid': 0}
         """
-        if (path[-3:] == '.nc'):
-            return {'st_mode': 33188, 'st_size': open(path).size}
-        else :
-            return {'st_mode': 16877}
-        
+
+        return  {'st_mode': 33188, 'st_size': open(path).size} if obj_type(path) == 2 else {'st_mode': 16877}
+
 
     def open(self, file, flags, mode=None):
         self.count += 1
@@ -135,6 +157,33 @@ class S3FileSystemMount(Operations):
     def release(self, path, fh):
         del self.openfh[fh]
         return
+
+    def readdir(self, path, fh):
+        logger.info("Requested ls for %s", path)
+        bucket, key = parse_path(path)
+        logger.info("Requested ls for bucket %s , key %s", bucket, key)
+        try:
+            def parse(entry):
+                prefix = key[:-1] if key[-1] == '/' else key
+                s3_key = entry['Key']
+                after_fix = s3_key[len(prefix):]
+                if(after_fix[0] == '/'):
+                    # show next level
+                    return after_fix.split('/')[1]
+                else :
+                    # finish this level
+                    # TODO: bug if key ends with '/' but who would do that!?
+                    return prefix.split('/')[-1] + after_fix.split('/')[0]
+
+            items = boto3.client('s3').list_objects_v2(Bucket=bucket,Prefix=key)['Contents']
+            items = map(parse, items)
+            items = list(set(items))
+        except KeyError:
+            items = []
+
+        logger.info("Found %s for %s", items, path)
+
+        return ['.', '..'] + items
 
 
 if __name__ == '__main__':
