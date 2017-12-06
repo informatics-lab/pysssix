@@ -38,7 +38,7 @@ setup(
     long_description=long_description,
 
     # The project's main homepage.
-    url='https://github.com/met-office-lab/s3-fuse',
+    url='https://github.com/met-office-lab/pysssix',
 
     # Author details
     author='Theo McCie',
