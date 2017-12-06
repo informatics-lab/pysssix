@@ -187,5 +187,5 @@ class S3FileSystemMount(Operations):
         return list_bucket(path)
 
 
-def pysssix_mount(mount_point):
-   return FUSE(S3FileSystemMount(),mount_point, foreground=True)
+def pysssix_mount(mount_point, allow_other=False):
+   return FUSE(S3FileSystemMount(),mount_point, foreground=True, allow_other=allow_other)
