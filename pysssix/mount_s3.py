@@ -23,7 +23,7 @@ s3 = boto3.resource('s3')
 def open(path):
     return S3Reader(path)
 
-@lru_cache(maxsize=32)
+@lru_cache(maxsize=1024)
 def get_s3_obj(path):
     logger.info("Creating S3 object for %s", path)
     bucket, key = parse_path(path)
@@ -43,17 +43,17 @@ def parse_path(path):
     return bucket, key
 
 def size_limited_caching_byte_request(path, start, stop):
-    method = get_bytes if (stop - start < 17000) else  get_bytes.__wrapped__ # the limit should be just over a metadata/chunk request limit?
+    method = get_bytes if (stop - start < 2e+7) else  get_bytes.__wrapped__ # the limit should be just over a metadata/chunk request limit?
     return method(path, start, stop)
 
-@lru_cache(maxsize=128)
+@lru_cache(maxsize=4096)
 def get_bytes(path, start, stop):
     rng=range_string(start, stop)
     logger.info("Request %s between %s", path, rng)
     return get_s3_obj(path).get(Range=rng)['Body'].read()
 
 
-@lru_cache(maxsize=128)
+@lru_cache(maxsize=1024)
 def obj_type(path):
     """
     0 not found
@@ -83,7 +83,7 @@ def obj_type(path):
         else:
             raise # Something else has gone wrong.
 
-@lru_cache(maxsize=512)
+@lru_cache(maxsize=1024)
 def list_bucket(path):
     logger.info("Requested ls for %s", path)
     bucket, key = parse_path(path)
