@@ -107,7 +107,7 @@ def list_bucket(path):
 
         items = boto3.client('s3').list_objects_v2(Bucket=bucket,Prefix=key)['Contents']
         items = map(parse, items)
-        items = list(set(items))
+        items = [i for i in set(items) if i]
     except KeyError:
         items = []
 

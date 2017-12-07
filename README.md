@@ -38,7 +38,7 @@ Work in progress use at own risk :)
 cd /root
 mkdir s3
 pip install --upgrade --no-deps --force-reinstall  ./pysssix/
-pysssix s3 --debug
+pysssix s3 -v
 ```
 
 In another process
