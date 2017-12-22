@@ -7,9 +7,6 @@ import argparse
 logger = logging.getLogger('pysssix')
 
 def main():
-    
-
-
     parser = argparse.ArgumentParser()
     parser.add_argument("mount_point", help="where to mount S3")
     parser.add_argument("-v", "--verbose", help="increase output verbosity", action="store_true")
