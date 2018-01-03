@@ -33,7 +33,7 @@ class BlockCache(object):
         logger.debug('got %r %r %r', self, key, record)
         start = record['block'] * self.blocksize
         stop = start + self.blocksize -1
-        data = yield from (asyncio.get_event_loop().run_in_executor(self.requester, self, key, start, stop))
+        data = yield from (asyncio.get_event_loop().run_in_executor(None, self.requester, key, start, stop))
         self.cache.set(record['ckey'], data, read=True)
         data = self.cache.get(record['ckey'], read=True)
         return {

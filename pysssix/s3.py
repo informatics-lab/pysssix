@@ -3,8 +3,9 @@ import logging
 from functools  import lru_cache
 import boto3
 from botocore.exceptions import ClientError
-import time
-from block_cache import BlockCache # TODO: relative imports
+from .block_cache import BlockCache 
+from fuse import FuseOSError
+from errno import ENOENT
 
 s3 = boto3.client('s3')
 

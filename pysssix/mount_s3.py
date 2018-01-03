@@ -166,8 +166,9 @@ class S3FileSystemMount(Operations):
         file = {'st_atime': 1511369446.0, 'st_ctime': 1511369374.0, 'st_gid': 0, 'st_mode': 33188, 'st_mtime': 1511367154.0, 'st_nlink': 1, 'st_size': 36047559, 'st_uid': 0}
         """
 
-        return  {'st_mode': 33188, 'st_size': open(path).size} if obj_type(path) == 2 else {'st_mode': 16877}
-
+        attr =   {'st_mode': 33188, 'st_size': open(path).size} if obj_type(path) == 2 else {'st_mode': 16877}
+        logger.info("found %s" % attr)
+        return attr
 
     def open(self, file, flags, mode=None):
         self.count += 1
@@ -185,6 +186,73 @@ class S3FileSystemMount(Operations):
 
     def readdir(self, path, fh):
         return list_bucket(path)
+
+
+
+from .s3 import open as s3_open, getattr as s3_getattr, list_bucket # TODO: relative imports
+import random 
+
+
+
+
+class S3Handeler(Operations):   
+
+
+    def __init__(self):
+        self.count = 0;
+        self.openfh = {};
+        #self.openfh = {};
+
+    def flush(self, path, fh):
+        return None
+
+    def getattr(self, path, fh=None):
+        # logger.info("you asked for %s", path)
+        # attr =   {'st_mode': 33188, 'st_size': open(path).size} if obj_type(path) == 2 else {'st_mode': 16877}
+        # logger.info("found %s" % attr)
+        # return attr
+
+        logger.info("getattr: %s" % path)
+        attrs =  s3_getattr(path)
+        logger.info("getattr: found %s for %s" % (attrs, path))
+        return attrs
+
+    def open(self, file, flags, mode=None):
+        # self.count += 1
+        # fh = self.count
+        # self.openfh[fh] = open(file)
+        # return fh
+
+
+        logger.info("open: %s", file)
+        fh = random.randint(5, 2147483646)
+        self.openfh[fh] = s3_open(file)
+        return fh
+
+
+    def read(self, path, size, offset, fh):
+        logger.info("read: %s (%s)" % (path, fh))
+        # self.openfh[fh].seek(offset)
+        # return self.openfh[fh].read(size)
+        logger.info("read: %s (%s)" % (path, fh))
+        s3_reader = self.openfh[fh] # TODO: not sure we need to use a reader to maintain the seek possition, offset might handel it for us...
+        s3_reader.seek(offset)
+        data = s3_reader.read(size, offset)
+        logger.info("read: len %s" % len(data))        
+        return b''.join((chunk.read() for chunk in data))
+        
+    def release(self, path, fh):
+        del self.openfh[fh]
+        return
+
+        # logger.info("release: %s (%s)" % (path, fh))
+        # del self.openfh[fh]
+        # return
+
+    def readdir(self, path, fh):
+        return list_bucket(path)
+        # logger.info("readdir: %s", path)
+        # return list_bucket(path)
 
 
 def pysssix_mount(mount_point, allow_other=False):

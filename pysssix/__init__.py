@@ -1,8 +1,11 @@
-from .mount_s3 import pysssix_mount
+from .mount_s3 import S3FileSystemMount
+# from .mount_s3 import S3FileSystemMount, S3Handeler
+from .client import AsyncS3Mount
+from .server import start_server
+from fuse import FUSE
 from sys import argv, exit
 import logging
 import argparse
-
 
 logger = logging.getLogger('pysssix')
 
@@ -11,6 +14,7 @@ def main():
     parser.add_argument("mount_point", help="where to mount S3")
     parser.add_argument("-v", "--verbose", help="increase output verbosity", action="store_true")
     parser.add_argument("-a", "--allow_other", help="pass allow_other=True to FUSE", action="store_true")
+    parser.add_argument("-p", "--port", help="port to use for client server communication", default=5472,  type=int)
 
     args = parser.parse_args()
 
@@ -21,4 +25,4 @@ def main():
         logger.addHandler(ch)
 
     logger.info("Starting up s3 fuse at mount point %s", args.mount_point)
-    fuse = pysssix_mount( args.mount_point, allow_other=args.allow_other)
+    fuse = FUSE(S3FileSystemMount(), args.mount_point, foreground=True, allow_other=args.allow_other)
