@@ -10,12 +10,37 @@ pysssix <mount_point> [--debug]
 
 `<mount_point>` should be a existing empty directory.
 
-Requires `libfuse` to be installed on the system. 
+Further options:
 
+```
+usage: -c [-h] [-v] [-a] [-p PORT] [-c CACHE_SIZE] [-b BLOCK_SIZE]
+          [-l CACHE_LOCATION]
+          mount_point
+
+positional arguments:
+  mount_point           where to mount S3
+
+optional arguments:
+  -h, --help            show this help message and exit
+  -v, --verbose         increase output verbosity
+  -a, --allow_other     pass allow_other=True to FUSE
+  -p PORT, --port PORT  port to use for client server communication
+  -c CACHE_SIZE, --cache_size CACHE_SIZE
+                        Approximate size of the cache in bytes
+  -b BLOCK_SIZE, --block_size BLOCK_SIZE
+                        Block size for requests
+  -l CACHE_LOCATION, --cache_location CACHE_LOCATION
+                        Path to disk location to store cache
+```
+
+
+Requires `libfuse` to be installed on the system. 
+ 
 Ubuntu:
 ```
 sudo apt-get install libfuse-dev
 ``` 
+
  
 Work in progress use at own risk :)
 

@@ -20,13 +20,22 @@ class ReadLimiter(object):
 
 class BlockCache(object):
     
-    def __init__(self, requester):
+    def __init__(self, requester, block_size=None, cache_path=None, cache_size=None):
+        
+        block_size = block_size if block_size else 2048
+        cache_path = cache_path if cache_path else '~/.pyssssix_cache'
+        cache_size = cache_size if cache_size else 4e9
+
         # TODO: configure more?
-        cache_path = os.path.abspath(os.path.expanduser('~/.pyssssix_cache'))
+        cache_path = os.path.abspath(os.path.expanduser(cache_path))
         logger.info('cache at %s' % cache_path)
-        self.cache = Cache(cache_path)
+        self.cache = Cache(cache_path, size_limit=int(cache_size))
         self.requester = requester
-        self.blocksize = 2048
+        self.blocksize = block_size
+    
+    def __del__(self):
+        logger.info("__del__ BlockCache. Close cache.")
+        self.cache.close()
 
     @asyncio.coroutine
     def get_and_save(self, key, record):

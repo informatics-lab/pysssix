@@ -3,7 +3,7 @@ import logging
 from functools  import lru_cache
 import boto3
 from botocore.exceptions import ClientError
-from .block_cache import BlockCache 
+# from .block_cache import BlockCache 
 from fuse import FuseOSError
 from errno import ENOENT
 
@@ -13,10 +13,6 @@ s3 = boto3.client('s3')
 # Logging 
 logger = logging.getLogger('pysssix')
 logger.setLevel(logging.DEBUG)
-
-
-def open(path):
-    return S3Reader(path)
 
 @lru_cache(1024)
 def get_size(path):
@@ -70,6 +66,7 @@ def obj_type(path):
             raise # Something else has gone wrong.
 
 
+@lru_cache(1024)
 def getattr(path):
     return {'st_mode': 33188, 'st_size': get_size(path)} if obj_type(path) == 2 else {'st_mode': 16877}
 
@@ -102,32 +99,3 @@ def list_bucket(path):
     logger.info("Found %s for %s", items, path)
 
     return ['.', '..'] + items
-
-
-class S3Reader(object):
-    def __init__(self, path):
-        self.size = get_size(path)
-        self.pos = 0  # pointer to starting read position
-        self.path = path
-
-    def __enter__(self):
-        return self
-
-    def __exit__(self, type, value, traceback):
-        self.pos = 0
-
-    def read(self, nbytes=None ,offset=None):
-        if offset is not None:
-            self.seek(offset)
-        if not nbytes:
-            nbytes = self.size - self.pos
-        # TODO confirm that start and stop bytes are within 0 to size
-        the_bytes =  cache.get(self.path, self.pos , nbytes)
-        self.pos += nbytes 
-        return the_bytes
-
-    def seek(self, offset, whence=0):
-        self.pos = whence + offset
-
-
-cache = BlockCache(get_bytes)

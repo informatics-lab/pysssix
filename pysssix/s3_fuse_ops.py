@@ -1,18 +1,30 @@
-from .s3 import open as s3_open, getattr as s3_getattr, list_bucket # TODO: relative imports
+from .s3 import getattr as s3_getattr, list_bucket, get_bytes # TODO: relative imports
 from fuse import Operations
 import logging
 import random 
+from .block_cache import BlockCache
 
 # Logging 
 logger = logging.getLogger('pysssix')
 logger.setLevel(logging.DEBUG)
 
 
+class NoCache(object):
+    def __init__(self, requester):
+        self.requester = requester
+        
+    def get(self, key, offset, size):
+        return [self.requester(key, offset, size-1)]
 
-class S3FileSystemMount(Operations):        
+class S3FUSEOps(Operations):        
 
-    def __init__(self):
-        self.openfh = {};
+    def __init__(self, cache_size=None, cache_path=None, block_size=None):
+        if(cache_size > 0):
+            logger.info('Using BlockCache')
+            self.cache = BlockCache(get_bytes, cache_size=cache_size, block_size=block_size, cache_path=cache_path)
+        else:
+            logger.info('Using NoCache')
+            self.cache = NoCache(get_bytes)
 
     def flush(self, path, fh):
         return None
@@ -27,23 +39,18 @@ class S3FileSystemMount(Operations):
     def open(self, file, flags, mode=None):
         logger.info("open: %s", file)
         fh = random.randint(5, 2147483646)
-        self.openfh[fh] = s3_open(file)
         return fh
 
     def read(self, path, size, offset, fh):
         logger.info("read: %s (%s)" % (path, fh))
-        s3_reader = self.openfh[fh] # TODO: not sure we need to use a reader to maintain the seek possition, offset might handel it for us...
-        s3_reader.seek(offset)
-        data = s3_reader.read(size, offset)
+        data = self.cache.get(path, offset , size)
         logger.info("read: len %s" % len(data))
         return b''.join((chunk.read() for chunk in data))
 
     def release(self, path, fh):
         logger.info("release: %s (%s)" % (path, fh))
-        del self.openfh[fh]
         return
 
     def readdir(self, path, fh):
         logger.info("readdir: %s", path)
         return list_bucket(path)
-
