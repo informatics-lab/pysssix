@@ -21,7 +21,7 @@ def get_size(path):
     return response['ContentLength']
 
 def range_string(start, stop):
-        return "bytes={}-{}".format(start, stop)
+        return "bytes={:d}-{:d}".format(start, stop)
 
 def parse_path(path):
     path = path[1:] if path[0] == '/' else path 
@@ -34,7 +34,7 @@ def get_bytes(path, start, stop):
     rng=range_string(start, stop)
     bucket, key = parse_path(path)
     logger.info("Request %s between %s", path, rng)
-    return s3.get_object(Bucket=bucket, Key=key, Range=rng)['Body']
+    return s3.get_object(Bucket=bucket, Key=key, Range=rng)['Body'].read()
 
 def obj_type(path):
     """

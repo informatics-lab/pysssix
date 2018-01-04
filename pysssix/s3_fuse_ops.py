@@ -42,10 +42,10 @@ class S3FUSEOps(Operations):
         return fh
 
     def read(self, path, size, offset, fh):
-        logger.info("read: %s (%s)" % (path, fh))
+        logger.info("read: %s (%s). Size: %s, offset: %s" % (path, fh, size, offset))
         data = self.cache.get(path, offset , size)
         logger.info("read: len %s" % len(data))
-        return b''.join((chunk.read() for chunk in data))
+        return data
 
     def release(self, path, fh):
         logger.info("release: %s (%s)" % (path, fh))
