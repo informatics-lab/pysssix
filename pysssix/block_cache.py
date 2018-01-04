@@ -58,6 +58,7 @@ class BlockCache(object):
 
 
         loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
         filled_holes_future = asyncio.gather(*(self.get_and_save(key, miss) for miss in misses),loop=loop)
         loop.run_until_complete(filled_holes_future)
         loop.close()
