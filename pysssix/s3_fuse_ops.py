@@ -14,7 +14,7 @@ class NoCache(object):
         self.requester = requester
         
     def get(self, key, offset, size):
-        return [self.requester(key, offset, size-1)]
+        return self.requester(key, offset, size-1)
 
 class S3FUSEOps(Operations):        
 
