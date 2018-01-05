@@ -48,7 +48,7 @@ def obj_type(path):
         bucket, key = parse_path(path)
         if not len(key) > 0:
             return 1
-        boto3.client('s3').list_objects_v2(Bucket=bucket,Prefix=key,MaxKeys=1)['Contents']
+        s3.list_objects_v2(Bucket=bucket,Prefix=key,MaxKeys=1)['Contents']
     except KeyError:
         raise FuseOSError(ENOENT)
 

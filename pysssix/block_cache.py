@@ -28,9 +28,12 @@ class BlockCache(object):
         self.blocksize = block_size
     
     def __del__(self):
-        logger.info("__del__ BlockCache. Close cache.")
-        self.cache.close()
-
+        try:
+            logger.info("__del__ BlockCache. Close cache.")
+            self.cache.close()
+        except Exception:
+            pass
+            
     @asyncio.coroutine
     def get_and_save(self, key, record):
         start = record['block'] * self.blocksize
