@@ -55,7 +55,7 @@ Work in progress use at own risk :)
 
  - run:
  ```
- docker run -i -t --cap-add SYS_ADMIN --device /dev/fuse  -v ~/.aws:/root/.aws -v $(pwd):/root/pysssix pysssix
+ docker run -i -t --cap-add SYS_ADMIN --device /dev/fuse  -p 7766:7766 -v ~/.aws:/root/.aws -v $(pwd):/root/pysssix pysssix
  ```
 
 ## Using
@@ -71,3 +71,18 @@ In another process
 ```
 cat /root/s3/<my bucket>/<my key>
 ```
+
+Run jupyter if required
+```
+cd ~
+jupyter-notebook --allow-root --port 7766  --ip=0.0.0.0 
+```
+
+
+Find orphaned fuse process...
+```
+
+ubuntu@ip-172-31-19-222:~$ fuser /dev/fuse
+/dev/fuse:            6671
+ubuntu@ip-172-31-19-222:~$ kill 6671
+````

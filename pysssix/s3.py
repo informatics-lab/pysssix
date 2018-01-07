@@ -31,6 +31,9 @@ def parse_path(path):
     return bucket, key
 
 def get_bytes(path, start, stop):
+    size = get_size(path)
+    if stop >= size:
+        stop = size - 1
     rng=range_string(start, stop)
     bucket, key = parse_path(path)
     logger.info("Request %s between %s", path, rng)

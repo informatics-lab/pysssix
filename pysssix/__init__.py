@@ -6,7 +6,7 @@ import argparse
 
 DEFAULTS = {
     'cache_size':4e9,
-    'block_size':8192,
+    'block_size':32768,
     'cache_path':'~/.pyssssix_cache'
 }
 
