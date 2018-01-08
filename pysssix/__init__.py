@@ -1,19 +1,32 @@
-from .mount_s3 import pysssix_mount
+from .s3_fuse_ops import S3FUSEOps
+from fuse import FUSE
 from sys import argv, exit
 import logging
 import argparse
 
+DEFAULTS = {
+    'cache_size':4e9,
+    'block_size':32768,
+    'cache_path':'~/.pyssssix_cache'
+}
 
 logger = logging.getLogger('pysssix')
 
+def mount(mount_point, cache_size=DEFAULTS['cache_size'], block_size=DEFAULTS['block_size'], 
+    cache_path=DEFAULTS['cache_path'],  allow_other=False, foreground=True):
+
+    return FUSE(
+                S3FUSEOps(cache_size=cache_size, block_size=block_size, cache_path=cache_path),
+                mount_point, foreground=foreground, allow_other=allow_other)
+
 def main():
-    
-
-
     parser = argparse.ArgumentParser()
     parser.add_argument("mount_point", help="where to mount S3")
     parser.add_argument("-v", "--verbose", help="increase output verbosity", action="store_true")
     parser.add_argument("-a", "--allow_other", help="pass allow_other=True to FUSE", action="store_true")
+    parser.add_argument("-c", "--cache_size", help="Approximate size of the cache in bytes", default=DEFAULTS['cache_size'],  type=float)
+    parser.add_argument("-b", "--block_size", help="Block size for requests", default=DEFAULTS['block_size'],  type=int)
+    parser.add_argument("-l", "--cache_location", help="Path to disk location to store cache", default=DEFAULTS['cache_path'])
 
     args = parser.parse_args()
 
@@ -24,4 +37,5 @@ def main():
         logger.addHandler(ch)
 
     logger.info("Starting up s3 fuse at mount point %s", args.mount_point)
-    fuse = pysssix_mount( args.mount_point, allow_other=args.allow_other)
+    fuse = mount(args.mount_point, cache_size=args.cache_size, block_size=args.block_size, 
+                    cache_path=args.cache_location, foreground=True, allow_other=args.allow_other)
